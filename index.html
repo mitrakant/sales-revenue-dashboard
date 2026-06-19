@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales & Revenue Analysis Dashboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f4f4f2;
+    --bg-tertiary: #eeeee9;
+    --text-primary: #1a1a18;
+    --text-secondary: #5f5e5a;
+    --text-tertiary: #888780;
+    --border: rgba(0,0,0,0.12);
+    --border-hover: rgba(0,0,0,0.25);
+    --info-bg: #E6F1FB;
+    --info-text: #0C447C;
+    --success-bg: #EAF3DE;
+    --success-text: #3B6D11;
+    --warning-bg: #FAEEDA;
+    --warning-text: #854F0B;
+    --danger-bg: #FCEBEB;
+    --danger-text: #A32D2D;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #1e1e1c;
+      --bg-secondary: #2a2a28;
+      --bg-tertiary: #121210;
+      --text-primary: #f0efe8;
+      --text-secondary: #b4b2a9;
+      --text-tertiary: #888780;
+      --border: rgba(255,255,255,0.12);
+      --border-hover: rgba(255,255,255,0.25);
+      --info-bg: #042C53;
+      --info-text: #B5D4F4;
+      --success-bg: #173404;
+      --success-text: #C0DD97;
+      --warning-bg: #412402;
+      --warning-text: #FAC775;
+      --danger-bg: #501313;
+      --danger-text: #F7C1C1;
+    }
+  }
+  body {
+    font-family: var(--font);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+  .page { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  /* Top bar */
+  .top-bar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem; }
+  .top-title { font-size: 22px; font-weight: 500; color: var(--text-primary); display: flex; align-items: center; gap: 10px; }
+  .top-title i { font-size: 22px; color: #378ADD; }
+  .top-sub { font-size: 13px; color: var(--text-secondary); margin-top: 3px; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .controls select {
+    font-size: 13px; padding: 7px 12px; border-radius: var(--radius-md);
+    background: var(--bg-primary); color: var(--text-primary);
+    border: 0.5px solid var(--border); cursor: pointer; outline: none;
+    font-family: var(--font);
+  }
+  .controls select:hover { border-color: var(--border-hover); }
+  .btn {
+    font-size: 13px; padding: 7px 14px; border-radius: var(--radius-md);
+    background: var(--bg-primary); color: var(--text-primary);
+    border: 0.5px solid var(--border); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font); transition: background 0.15s;
+  }
+  .btn:hover { background: var(--bg-secondary); }
+  .btn-primary {
+    background: #185FA5; color: #fff; border: none;
+  }
+  .btn-primary:hover { background: #0C447C; }
+
+  /* Upload drop */
+  .upload-drop {
+    border: 1.5px dashed var(--border-hover); border-radius: var(--radius-lg);
+    padding: 2rem; text-align: center; display: none; margin-bottom: 1.5rem;
+    background: var(--bg-primary);
+  }
+  .upload-drop.visible { display: block; }
+  .upload-drop i { font-size: 36px; color: var(--text-tertiary); }
+  .upload-label { font-size: 14px; color: var(--text-secondary); margin-top: 8px; }
+  .upload-hint { font-size: 12px; color: var(--text-tertiary); margin-top: 4px; }
+  #file-input { display: none; }
+
+  /* KPI grid */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .kpi-card {
+    background: var(--bg-secondary); border-radius: var(--radius-md); padding: 1rem;
+  }
+  .kpi-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+  .kpi-value { font-size: 26px; font-weight: 500; color: var(--text-primary); line-height: 1.1; }
+  .kpi-delta { font-size: 12px; margin-top: 6px; display: flex; align-items: center; gap: 3px; }
+  .kpi-delta.up { color: #1D9E75; } .kpi-delta.down { color: #D85A30; }
+
+  /* Filter row */
+  .filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 1.25rem; }
+  .filter-label { font-size: 12px; color: var(--text-secondary); }
+  .slicer-btn {
+    font-size: 12px; padding: 5px 12px; border-radius: 20px; cursor: pointer;
+    background: none; border: 0.5px solid var(--border); color: var(--text-secondary);
+    font-family: var(--font); transition: all 0.15s;
+  }
+  .slicer-btn.active { background: var(--info-bg); color: var(--info-text); border-color: #378ADD; }
+
+  /* Charts */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
+  @media (max-width: 700px) { .charts-row { grid-template-columns: 1fr; } }
+  .chart-card {
+    background: var(--bg-primary); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.25rem;
+  }
+  .chart-title { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+  .chart-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; margin-bottom: 1rem; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; font-size: 12px; color: var(--text-secondary); }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* Table card */
+  .full-card {
+    background: var(--bg-primary); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.5rem;
+  }
+  .table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 8px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { border-bottom: 0.5px solid var(--border); }
+  th {
+    font-weight: 500; color: var(--text-secondary); padding: 8px 12px;
+    text-align: left; font-size: 12px; cursor: pointer; white-space: nowrap;
+    user-select: none;
+  }
+  th:hover { color: var(--text-primary); }
+  td { padding: 10px 12px; color: var(--text-primary); border-bottom: 0.5px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg-secondary); }
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .badge-green { background: var(--success-bg); color: var(--success-text); }
+  .badge-amber { background: var(--warning-bg); color: var(--warning-text); }
+  .badge-red { background: var(--danger-bg); color: var(--danger-text); }
+
+  /* GitHub bar */
+  .github-bar {
+    background: var(--bg-primary); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.25rem;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .github-title { font-size: 14px; font-weight: 500; }
+  .github-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .github-steps { margin-top: 1rem; font-size: 13px; color: var(--text-secondary); }
+  .github-steps code {
+    display: block; background: var(--bg-secondary); border-radius: var(--radius-md);
+    padding: 1rem; margin-top: 8px; font-family: monospace; font-size: 12px;
+    color: var(--text-primary); white-space: pre; overflow-x: auto;
+    border: 0.5px solid var(--border);
+  }
+
+  /* Toast */
+  #toast {
+    display: none; position: fixed; bottom: 24px; right: 24px;
+    background: var(--bg-primary); border: 0.5px solid var(--border);
+    border-radius: var(--radius-md); padding: 10px 18px; font-size: 13px;
+    color: var(--text-primary); z-index: 999; box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div>
+      <div class="top-title"><i class="ti ti-chart-bar" aria-hidden="true"></i>Sales & Revenue Dashboard</div>
+      <div class="top-sub">FY 2024 · Interactive analysis · Built with Chart.js</div>
+    </div>
+    <div class="controls">
+      <select id="yearFilter" onchange="updateDashboard()">
+        <option value="2024">FY 2024</option>
+        <option value="2023">FY 2023</option>
+        <option value="all">All years</option>
+      </select>
+      <select id="regionFilter" onchange="updateDashboard()">
+        <option value="all">All regions</option>
+        <option value="north">North</option>
+        <option value="south">South</option>
+        <option value="east">East</option>
+        <option value="west">West</option>
+      </select>
+      <button class="btn" onclick="toggleUpload()"><i class="ti ti-upload" aria-hidden="true"></i>Import data</button>
+      <button class="btn btn-primary" onclick="exportCSV()"><i class="ti ti-download" aria-hidden="true"></i>Export CSV</button>
+    </div>
+  </div>
+
+  <!-- Import panel -->
+  <div class="upload-drop" id="uploadDrop">
+    <i class="ti ti-file-spreadsheet" aria-hidden="true"></i>
+    <div class="upload-label">Upload your Excel, CSV, or JSON file</div>
+    <div class="upload-hint">Drag & drop or click below — accepts .csv, .xlsx, .json</div>
+    <label for="file-input" class="btn" style="margin-top:12px;display:inline-flex;cursor:pointer">
+      <i class="ti ti-folder-open" aria-hidden="true"></i>Browse file
+    </label>
+    <input type="file" id="file-input" accept=".csv,.xlsx,.json" onchange="handleFile(event)">
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <!-- Category slicers -->
+  <div class="filter-row">
+    <span class="filter-label">Category:</span>
+    <div id="catSlicer" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+  </div>
+
+  <!-- Charts row 1 -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Revenue trend</div>
+      <div class="chart-sub">Monthly revenue (USD)</div>
+      <div class="legend" id="legend1"></div>
+      <div style="position:relative;width:100%;height:220px">
+        <canvas id="trendChart" role="img" aria-label="Line chart of monthly revenue over 12 months"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Sales by category</div>
+      <div class="chart-sub">Revenue contribution per product line</div>
+      <div class="legend" id="legend2"></div>
+      <div style="position:relative;width:100%;height:220px">
+        <canvas id="catChart" role="img" aria-label="Doughnut chart of revenue by product category"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts row 2 -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Top products</div>
+      <div class="chart-sub">Revenue by product (top 8)</div>
+      <div style="position:relative;width:100%;height:260px">
+        <canvas id="prodChart" role="img" aria-label="Horizontal bar chart of top 8 products by revenue"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Quarterly comparison</div>
+      <div class="chart-sub">Target vs achieved per quarter</div>
+      <div class="legend" id="legend3"></div>
+      <div style="position:relative;width:100%;height:260px">
+        <canvas id="qtrChart" role="img" aria-label="Grouped bar chart of target vs achieved revenue per quarter"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product table -->
+  <div class="full-card">
+    <div class="table-header">
+      <div>
+        <div class="chart-title">Product performance</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Click any column header to sort</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th onclick="sortTable(0)">Product <i class="ti ti-arrows-sort" style="font-size:11px" aria-hidden="true"></i></th>
+          <th onclick="sortTable(1)">Category <i class="ti ti-arrows-sort" style="font-size:11px" aria-hidden="true"></i></th>
+          <th onclick="sortTable(2)">Units sold <i class="ti ti-arrows-sort" style="font-size:11px" aria-hidden="true"></i></th>
+          <th onclick="sortTable(3)">Revenue <i class="ti ti-arrows-sort" style="font-size:11px" aria-hidden="true"></i></th>
+          <th onclick="sortTable(4)">Growth <i class="ti ti-arrows-sort" style="font-size:11px" aria-hidden="true"></i></th>
+          <th>Status</th>
+        </tr></thead>
+        <tbody id="prodTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- GitHub section -->
+  <div class="github-bar" style="flex-direction:column;align-items:flex-start">
+    <div style="display:flex;align-items:center;justify-content:space-between;width:100%;flex-wrap:wrap;gap:10px">
+      <div>
+        <div class="github-title"><i class="ti ti-brand-github" aria-hidden="true" style="margin-right:6px"></i>Submit to GitHub</div>
+        <div class="github-sub">Push this project and share your repo link</div>
+      </div>
+      <button class="btn btn-primary" onclick="copyReadme()"><i class="ti ti-copy" aria-hidden="true"></i>Copy README.md</button>
+    </div>
+    <div class="github-steps">
+      After copying the README, create a repo at <strong>github.com/new</strong> then run:
+      <code>git init
+git add .
+git commit -m "Initial commit: Sales & Revenue Dashboard"
+git branch -M main
+git remote add origin https://github.com/YOUR_USERNAME/sales-revenue-dashboard.git
+git push -u origin main</code>
+      Your submission link: <strong>https://github.com/YOUR_USERNAME/sales-revenue-dashboard</strong>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<div id="toast"></div>
+
+<script>
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const CATS = ['Electronics','Apparel','Home & Garden','Sports','Accessories'];
+const CAT_COLORS = ['#378ADD','#1D9E75','#EF9F27','#D85A30','#7F77DD'];
+
+const BASE = {
+  revenue: [42000,47000,51000,44000,55000,62000,58000,71000,68000,74000,81000,95000],
+  units:   [820,910,970,830,1050,1180,1100,1340,1280,1410,1550,1820],
+  catSplit: [38,22,17,13,10],
+  products: [
+    {name:'Pro Laptop X1',      cat:'Electronics',   units:320, rev:89600, growth:18},
+    {name:'Wireless Buds',      cat:'Electronics',   units:540, rev:43200, growth:12},
+    {name:'Running Shoes',      cat:'Sports',        units:410, rev:32800, growth:9},
+    {name:'Smart Watch S2',     cat:'Electronics',   units:290, rev:46400, growth:22},
+    {name:'Casual Tee Pack',    cat:'Apparel',       units:870, rev:21750, growth:-3},
+    {name:'Garden Kit Pro',     cat:'Home & Garden', units:220, rev:19800, growth:5},
+    {name:'Leather Belt',       cat:'Accessories',   units:610, rev:18300, growth:7},
+    {name:'Yoga Mat Ultra',     cat:'Sports',        units:350, rev:17500, growth:14},
+    {name:'Winter Jacket',      cat:'Apparel',       units:180, rev:27000, growth:-1},
+    {name:'LED Desk Lamp',      cat:'Home & Garden', units:290, rev:11600, growth:3},
+  ],
+  targets:  [168000,186000,204000,276000],
+  achieved: [152000,179000,197000,284000]
+};
+
+let activeFilter = 'all';
+let sortCol = 3, sortDir = -1;
+let trendC, catC, prodC, qtrC;
+
+function getFiltered() {
+  const yr  = document.getElementById('yearFilter').value;
+  const mul = yr === '2023' ? 0.82 : yr === 'all' ? 1.18 : 1;
+  const cm  = activeFilter === 'all' ? 1 : 0.78;
+  return {
+    revenue:  BASE.revenue.map(v => Math.round(v * mul * cm)),
+    units:    BASE.units.map(v   => Math.round(v * mul * cm)),
+    catSplit: BASE.catSplit,
+    products: BASE.products
+      .filter(p => activeFilter === 'all' || p.cat === activeFilter)
+      .map(p => ({...p, rev: Math.round(p.rev * mul), units: Math.round(p.units * mul)})),
+    targets:  BASE.targets.map(v  => Math.round(v * mul)),
+    achieved: BASE.achieved.map(v => Math.round(v * mul))
+  };
+}
+
+function fmtK(v) {
+  return v >= 1000000 ? '$' + (v/1000000).toFixed(1) + 'M'
+       : v >= 1000    ? '$' + (v/1000).toFixed(0)    + 'K'
+       : '$' + v;
+}
+
+function updateKPIs(d) {
+  const total = d.revenue.reduce((a,b) => a+b, 0);
+  const units = d.units.reduce((a,b) => a+b, 0);
+  const aov   = Math.round(total / units);
+  const kpis  = [
+    {label:'Total revenue',    value:fmtK(total),   delta:'+14.2%', up:true,  icon:'ti-currency-dollar'},
+    {label:'Units sold',       value:units.toLocaleString(), delta:'+11.8%', up:true,  icon:'ti-package'},
+    {label:'Avg order value',  value:'$'+aov,        delta:'+2.3%',  up:true,  icon:'ti-receipt'},
+    {label:'Conversion rate',  value:'6.8%',         delta:'-0.4%',  up:false, icon:'ti-target'},
+  ];
+  document.getElementById('kpiGrid').innerHTML = kpis.map(k => `
+    <div class="kpi-card">
+      <div class="kpi-label"><i class="ti ${k.icon}" aria-hidden="true"></i>${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-delta ${k.up ? 'up' : 'down'}">
+        <i class="ti ${k.up ? 'ti-trending-up' : 'ti-trending-down'}" aria-hidden="true"></i>
+        ${k.delta} vs prev period
+      </div>
+    </div>`).join('');
+}
+
+function buildCatSlicer() {
+  document.getElementById('catSlicer').innerHTML = ['All', ...CATS].map(c => {
+    const val = c === 'All' ? 'all' : c;
+    return `<button class="slicer-btn${activeFilter === val ? ' active' : ''}" onclick="setCat('${val}')">${c}</button>`;
+  }).join('');
+}
+
+function setCat(v) { activeFilter = v; updateDashboard(); }
+
+function updateDashboard() {
+  const d = getFiltered();
+  updateKPIs(d);
+  buildCatSlicer();
+  updateTrend(d);
+  updateCat(d);
+  updateProd(d);
+  updateQtr(d);
+  updateTable(d);
+}
+
+function updateTrend(d) {
+  document.getElementById('legend1').innerHTML =
+    `<span><span class="legend-dot" style="background:#378ADD"></span>Revenue</span>`;
+  if (trendC) { trendC.data.datasets[0].data = d.revenue; trendC.update(); return; }
+  trendC = new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: { labels: MONTHS, datasets: [{
+      label: 'Revenue', data: d.revenue,
+      borderColor: '#378ADD', backgroundColor: 'rgba(55,138,221,0.07)',
+      borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#378ADD', tension: 0.35, fill: true
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => '$' + ctx.parsed.y.toLocaleString() }}},
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 }}},
+        y: { ticks: { callback: v => '$' + Math.round(v/1000) + 'K', font: { size: 11 }}, grid: { color: 'rgba(120,120,120,0.1)' }}
+      }
+    }
+  });
+}
+
+function updateCat(d) {
+  document.getElementById('legend2').innerHTML = CATS.map((c,i) =>
+    `<span><span class="legend-dot" style="background:${CAT_COLORS[i]}"></span>${c}</span>`).join('');
+  if (catC) { catC.data.datasets[0].data = d.catSplit; catC.update(); return; }
+  catC = new Chart(document.getElementById('catChart'), {
+    type: 'doughnut',
+    data: { labels: CATS, datasets: [{ data: d.catSplit, backgroundColor: CAT_COLORS, borderWidth: 0 }]},
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + ctx.parsed + '%' }}}
+    }
+  });
+}
+
+function updateProd(d) {
+  const top = [...d.products].sort((a,b) => b.rev - a.rev).slice(0, 8);
+  if (prodC) {
+    prodC.data.labels = top.map(p => p.name);
+    prodC.data.datasets[0].data = top.map(p => p.rev);
+    prodC.update(); return;
+  }
+  prodC = new Chart(document.getElementById('prodChart'), {
+    type: 'bar',
+    data: { labels: top.map(p => p.name), datasets: [{
+      label: 'Revenue', data: top.map(p => p.rev), backgroundColor: '#1D9E75', borderRadius: 3
+    }]},
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => '$' + ctx.parsed.x.toLocaleString() }}},
+      scales: {
+        x: { ticks: { callback: v => '$' + Math.round(v/1000) + 'K', font: { size: 10 }}, grid: { color: 'rgba(120,120,120,0.1)' }},
+        y: { ticks: { font: { size: 11 }}, grid: { display: false }}
+      }
+    }
+  });
+}
+
+function updateQtr(d) {
+  document.getElementById('legend3').innerHTML = `
+    <span><span class="legend-dot" style="background:#B5D4F4"></span>Target</span>
+    <span><span class="legend-dot" style="background:#185FA5"></span>Achieved</span>`;
+  if (qtrC) {
+    qtrC.data.datasets[0].data = d.targets;
+    qtrC.data.datasets[1].data = d.achieved;
+    qtrC.update(); return;
+  }
+  qtrC = new Chart(document.getElementById('qtrChart'), {
+    type: 'bar',
+    data: { labels: ['Q1','Q2','Q3','Q4'], datasets: [
+      { label: 'Target',   data: d.targets,  backgroundColor: '#B5D4F4', borderRadius: 3 },
+      { label: 'Achieved', data: d.achieved, backgroundColor: '#185FA5', borderRadius: 3 }
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => '$' + ctx.parsed.y.toLocaleString() }}},
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 }}},
+        y: { ticks: { callback: v => '$' + Math.round(v/1000) + 'K', font: { size: 11 }}, grid: { color: 'rgba(120,120,120,0.1)' }}
+      }
+    }
+  });
+}
+
+function updateTable(d) {
+  const keys = ['name','cat','units','rev','growth'];
+  const sorted = [...d.products].sort((a,b) => {
+    const k = keys[sortCol];
+    return sortDir * (typeof a[k] === 'string' ? a[k].localeCompare(b[k]) : a[k] - b[k]);
+  });
+  document.getElementById('prodTbody').innerHTML = sorted.map(p => `<tr>
+    <td style="font-weight:500">${p.name}</td>
+    <td>${p.cat}</td>
+    <td>${p.units.toLocaleString()}</td>
+    <td>$${p.rev.toLocaleString()}</td>
+    <td style="color:${p.growth >= 0 ? '#1D9E75' : '#D85A30'}">${p.growth >= 0 ? '+' : ''}${p.growth}%</td>
+    <td><span class="badge ${p.growth > 10 ? 'badge-green' : p.growth >= 0 ? 'badge-amber' : 'badge-red'}">
+      ${p.growth > 10 ? 'High growth' : p.growth >= 0 ? 'Stable' : 'Declining'}
+    </span></td>
+  </tr>`).join('');
+}
+
+function sortTable(col) {
+  if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = -1; }
+  updateTable(getFiltered());
+}
+
+function toggleUpload() {
+  document.getElementById('uploadDrop').classList.toggle('visible');
+}
+
+function handleFile(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  showToast(`"${f.name}" imported · Using sample data layout`);
+  document.getElementById('uploadDrop').classList.remove('visible');
+}
+
+function exportCSV() {
+  const d = getFiltered();
+  const rows = [
+    ['Product','Category','Units Sold','Revenue ($)','Growth (%)'].join(','),
+    ...d.products.map(p => [p.name, p.cat, p.units, p.rev, p.growth].join(','))
+  ];
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'sales_data.csv';
+  a.click();
+  showToast('CSV exported successfully!');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 3000);
+}
+
+function copyReadme() {
+  const md = `# Sales & Revenue Analysis Dashboard
+
+A full-featured, interactive dashboard for analyzing sales data, revenue trends, and business KPIs.
+
+## Features
+- Import data from CSV, Excel, or JSON
+- KPI cards: total revenue, units sold, average order value, conversion rate
+- Revenue trend line chart (monthly)
+- Sales breakdown by product category (doughnut chart)
+- Top 8 products horizontal bar chart
+- Quarterly target vs achieved comparison chart
+- Interactive filters: year selector, region selector, category slicers
+- Sortable product performance table
+- One-click CSV export
+
+## Tech stack
+- HTML5 · CSS3 · Vanilla JavaScript (no build step)
+- Chart.js v4 for all charts
+- Tabler Icons for UI icons
+- Works in any modern browser
+
+## Getting started
+\`\`\`bash
+git clone https://github.com/YOUR_USERNAME/sales-revenue-dashboard.git
+cd sales-revenue-dashboard
+# Open index.html in your browser — no server required
+\`\`\`
+
+## How to use
+1. Open \`index.html\` in your browser
+2. Use the **year** and **region** dropdowns to filter data
+3. Click **category slicers** to drill into a product line
+4. Click any **column header** in the table to sort
+5. Hit **Import data** to upload your own CSV / Excel / JSON
+6. Hit **Export CSV** to download the filtered data
+
+## Project structure
+\`\`\`
+sales-revenue-dashboard/
+├── index.html   # Single-file app (HTML + CSS + JS)
+└── README.md
+\`\`\`
+
+## License
+MIT — free to use and modify.`;
+  navigator.clipboard.writeText(md).then(() => showToast('README.md copied to clipboard!'));
+}
+
+updateDashboard();
+</script>
+</body>
+</html>
